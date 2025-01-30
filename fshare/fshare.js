@@ -140,7 +140,7 @@ async function downloadFolder(folderId) {
     }
     if (stop) return;
     console.log(`Fetching ${name}`);
-    let url = await getDownloadUrl(fileId, formData);
+    let url = await getDownloadUrl(linkcode, formData);
     if (url) {
       result.push(url);
       console.log(`Download url = ${url}`);
@@ -152,6 +152,72 @@ async function downloadFolder(folderId) {
     }
   }
   return result;
+}
+
+async function downloadFolder2(folderId) {
+  let Authorization = "Bearer " + $("input#acstk").attr("data-value");
+
+  if (!Authorization) {
+    console.log("Not logged in");
+    return 1;
+  }
+
+  let files = await getFiles(folderId);
+
+  if (files.length === 0) {
+    console.log("0 files. Exiting");
+    return;
+  }
+
+  const myHeaders = new Headers();
+  myHeaders.append(
+    "User-Agent",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:134.0) Gecko/20100101 Firefox/134.0"
+  );
+  myHeaders.append("Accept", "application/json, text/javascript, */*; q=0.01");
+  myHeaders.append("Accept-Language", "vi-VN,vi");
+  myHeaders.append("Accept-Encoding", "gzip, deflate, br, zstd");
+  myHeaders.append("Authorization", Authorization);
+  myHeaders.append("Content-Type", "application/json");
+  myHeaders.append("X-Requested-With", "XMLHttpRequest");
+  myHeaders.append("Origin", "https://www.fshare.vn");
+  myHeaders.append("Connection", "keep-alive");
+  myHeaders.append("Referer", "https://www.fshare.vn");
+  myHeaders.append("Sec-Fetch-Dest", "empty");
+  myHeaders.append("Sec-Fetch-Mode", "cors");
+  myHeaders.append("Sec-Fetch-Site", "same-origin");
+  myHeaders.append("Pragma", "no-cache");
+  myHeaders.append("Cache-Control", "no-cache");
+  myHeaders.append("TE", "trailers");
+
+  const raw = JSON.stringify({
+    linkcode: files
+      .filter((item) => {
+        if (item.type === 0) {
+          console.log("Skip folder", item);
+          return false;
+        }
+        return true;
+      })
+      .map((item) => item.linkcode),
+    withFcode5: 0,
+    fcode: "",
+  });
+
+  const requestOptions = {
+    method: "POST",
+    headers: myHeaders,
+    body: raw,
+    redirect: "follow",
+  };
+
+  return await fetch(
+    "https://www.fshare.vn/api/v3/downloads/download-side-by-side",
+    requestOptions
+  )
+    .then((response) => response.json())
+    .then((result) => result)
+    .catch((error) => console.error(error));
 }
 
 async function downloadFile(fileId) {
@@ -178,7 +244,7 @@ async function main() {
   const fileId = getFileId();
   let result = [];
   if (folderId) {
-    result = await downloadFolder();
+    result = await downloadFolder2(folderId);
   } else if (fileId) {
     result = await downloadFile(fileId);
   } else {
